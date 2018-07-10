@@ -17,7 +17,7 @@ public:
     static Data* getInstance();
     bool loadTrainData();
     void getLabelColumn(int* output);
-    void getFeatureColumn(int feature, float* output);
+    float* getFeatureColumn(int feature);
     float* getPredictFeatureByIndex(int index);
     int getLabelBySampleIndex(int index);
     void getFeatureByFeatureIndex(float* output, int* input, int sampleNum, int featureIndex);
@@ -25,12 +25,15 @@ public:
     int getTrainNum();
     int getPredictNum();
     bool loadPredictData();
+    bool loadTrainDataByColumn();
     bool savePrediction(float* prediction, string path);
 private:
     Data();
     ~Data();
     sampleItem* trainSample;
     sampleItem* predictSample;
+    float** trainMat; //[featureNum][trainNum]
+    int* label;
 
     static string trainDataPath;
     static string predictDataPath;

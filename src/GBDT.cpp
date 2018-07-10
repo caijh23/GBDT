@@ -108,8 +108,7 @@ void GBDT::SplitOneNodeByFeature (treeNode* node, int feature, int round, float*
 {
     cout << "split node by one feature started" << endl;
     int sampleNum = node->tn_sampleNum;
-    float* feature_value = new float[gbdt_train_num];
-    Data::getInstance()->getFeatureColumn(feature,feature_value);
+    float* feature_value = Data::getInstance()->getFeatureColumn(feature);
     sort(node->tn_samples,node->tn_samples + sampleNum,[=](int i1, int i2){
         return feature_value[i1] < feature_value[i2];
     });
@@ -139,7 +138,6 @@ void GBDT::SplitOneNodeByFeature (treeNode* node, int feature, int round, float*
         }
     }   
     cout << "split node by one feature completed" << endl;
-    delete[] feature_value;
 }
 
 void GBDT::initalOneTree(treeNode* node)
@@ -208,8 +206,7 @@ bool GBDT::SplitOneNodeByAllFeature (treeNode* node, int round)
         return false;
     }
     int sampleNum = node->tn_sampleNum;
-    float* feature_value = new float[sampleNum];
-    Data::getInstance()->getFeatureByFeatureIndex(feature_value,node->tn_samples,sampleNum,bestSplitFeature);
+    float* feature_value = Data::getInstance()->getFeatureColumn(bestSplitFeature);
     node->tn_feature = bestSplitFeature;
     node->tn_weight = bestSplitPoint;
     treeNode* leftNode = new treeNode;
@@ -228,7 +225,7 @@ bool GBDT::SplitOneNodeByAllFeature (treeNode* node, int round)
     rightNode->tn_sampleNum = 0;
     for (int i = 0;i < sampleNum;i++)
     {
-        if (feature_value[i] <= bestSplitPoint)
+        if (feature_value[node->tn_samples[i]] <= bestSplitPoint)
         {
             leftNode->tn_samples[leftNode->tn_sampleNum] = node->tn_samples[i];
             leftNode->tn_sampleNum++;
@@ -248,7 +245,6 @@ bool GBDT::SplitOneNodeByAllFeature (treeNode* node, int round)
     rightNode->tn_samples = tempRightSample;
     node->tn_smallAndEqual = leftNode;
     node->tn_large = rightNode;
-    delete[] feature_value;
     cout << "Spilt one node" << endl;
     return true;
 }

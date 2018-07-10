@@ -15,6 +15,8 @@ Data::Data()
 {
     trainSample = NULL;
     predictSample = NULL;
+    label = NULL;
+    trainMat = NULL;
 }
 
 Data::~Data()
@@ -38,6 +40,18 @@ Data::~Data()
     if (instance)
     {
         delete instance;
+    }
+    if (trainMat)
+    {
+        for (int i = 0;i < featureNum;i++)
+        {
+            delete[] trainMat[i];
+        }
+        delete[] trainMat;
+    }
+    if (label)
+    {
+        delete label;
     }
 }
 
@@ -95,6 +109,58 @@ bool Data::loadPredictData()
         while (currentIndex < featureNum)
         {
             predictSample[index].feature_value[currentIndex] = 0.0;
+            currentIndex++;
+        }
+        index++;
+    }
+    inFile.close();
+    return true;
+}
+
+bool Data::loadTrainDataByColumn()
+{
+    trainMat = new float*[featureNum];
+    for (int i = 0;i < featureNum;i++)
+    {
+        trainMat[i] = new float[trainNum];
+        for (int j = 0;j < trainNum;j++)
+            trainMat[i][j] = 0.0;
+    }
+    label = new int[trainNum];
+    
+    ifstream inFile;
+    inFile.open(trainDataPath.c_str());
+    if (!inFile)
+    {
+        cout << "open file failed!" << endl;
+        cout << "path is " << trainDataPath << endl;
+        return false;
+    }
+    int index = 0;
+    while (!inFile.eof())
+    {
+        string line;
+        getline(inFile,line);
+        stringstream ss;
+        ss << line;
+        ss >> label[index];
+        int currentIndex = 0;
+        while (!ss.eof())
+        {
+            string strIndex;
+            string strFeature;
+            string temp;
+            ss >> temp;
+            if (ss.eof())
+                break;
+            stringstream ss_temp(temp);
+            getline(ss_temp, strIndex, ':');
+            getline(ss_temp, strFeature);
+            int tempIndex = std::stoi(strIndex) - 1;
+            float tempFeature = std::stof(strFeature);
+            while (currentIndex < tempIndex)
+                currentIndex++;
+            trainMat[currentIndex][index] = tempFeature;
             currentIndex++;
         }
         index++;
@@ -210,12 +276,9 @@ float* Data::getPredictFeatureByIndex(int index)
     return predictSample[index].feature_value;
 }
 
-void Data::getFeatureColumn(int feature, float* output)
+float* Data::getFeatureColumn(int feature)
 {
-    for (int i = 0;i < trainNum;i++)
-    {
-        output[i] = trainSample[i].feature_value[feature];
-    }
+    return trainMat[feature];
 }
 
 void Data::getLabelColumn(int* output)
