@@ -1,4 +1,4 @@
 # GBDT
 期末大作业自己用c++实现gbdt
 
-实现对于一个feature用O(n^2)分裂，速度太慢，在version2进行改进
+将version1中分裂一个节点时扫描一个feature的时间复杂度为O(n^2)改为O(nlogn),并做了少许cache友好的优化。
