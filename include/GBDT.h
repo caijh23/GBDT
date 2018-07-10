@@ -29,12 +29,15 @@ private:
     void initalOneTree(treeNode* node);
     float getGj(treeNode* node, int round);
     float getHj(treeNode* node, int round);
+    float getGi(int index, int round);
+    float getHi(int index, int round);
     void trainSingleTree(treeNode* node, int round, int depth);
     
 
     treeNode** gbdt_trees; //[round][boostingStep]
     float** gbdt_prediction; //[round][predictSampleNum]
     float** gbdt_train; //[round][trainSampleNum]
+    int* gbdt_label;
 
     int gbdt_round;
     int gbdt_maxBoostingNum;

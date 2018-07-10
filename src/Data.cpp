@@ -209,3 +209,19 @@ float* Data::getPredictFeatureByIndex(int index)
 {
     return predictSample[index].feature_value;
 }
+
+void Data::getFeatureColumn(int feature, float* output)
+{
+    for (int i = 0;i < trainNum;i++)
+    {
+        output[i] = trainSample[i].feature_value[feature];
+    }
+}
+
+void Data::getLabelColumn(int* output)
+{
+    for (int i = 0;i < trainNum;i++)
+    {
+        output[i] = trainSample[i].label;
+    }
+}

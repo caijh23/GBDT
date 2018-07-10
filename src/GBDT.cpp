@@ -12,6 +12,7 @@ GBDT::GBDT()
     gbdt_feature_num = Data::getInstance()->getFeatureNum();
     gbdt_train_num = Data::getInstance()->getTrainNum();
     gbdt_predict_num = Data::getInstance()->getPredictNum();
+    gbdt_label = NULL;
 }
 
 GBDT::~GBDT()
@@ -29,6 +30,7 @@ GBDT::~GBDT()
     delete[] gbdt_trees;
     delete[] gbdt_train;
     delete[] gbdt_prediction;
+    delete[] gbdt_label;
     cout << "GBDT destory" << endl;
 }
 
@@ -66,6 +68,11 @@ void GBDT::initModel()
             gbdt_prediction[i][j] = 0.0;
         }
     }
+    if (gbdt_label == NULL)
+    {
+        gbdt_label = new int[gbdt_train_num];
+        Data::getInstance()->getLabelColumn(gbdt_label);
+    }
 }
 
 float GBDT::predictFromOneTree (treeNode* node, float* inputItem)
@@ -101,65 +108,38 @@ void GBDT::SplitOneNodeByFeature (treeNode* node, int feature, int round, float*
 {
     cout << "split node by one feature started" << endl;
     int sampleNum = node->tn_sampleNum;
-    float* feature_value = new float[sampleNum];
-    Data::getInstance()->getFeatureByFeatureIndex(feature_value,node->tn_samples,sampleNum,feature);
-    float* feature_temp = new float[sampleNum];
-    memcpy(feature_temp,feature_value,sampleNum * sizeof(float));
-    sort(feature_value,feature_value + sampleNum);
-    int length = unique(feature_value, feature_value + sampleNum) - feature_value;
-    *maxGain = 0.0;
+    float* feature_value = new float[gbdt_train_num];
+    Data::getInstance()->getFeatureColumn(feature,feature_value);
+    sort(node->tn_samples,node->tn_samples + sampleNum,[=](int i1, int i2){
+        return feature_value[i1] < feature_value[i2];
+    });
+    *maxGain = -1e10;
     *bestSplitPoint = 0.0;
-    for (int i = 0;i < length;i++)
+    float G_sum = getGj(node,round);
+    float H_sum = getHj(node,round);
+    float GL = 0.0;
+    float HL = 0.0;
+    float GR = G_sum;
+    float HR = H_sum;
+    for (int i = 0;i < sampleNum;i++)
     {
-        float tempSplitPoint = feature_value[i];
-        treeNode* leftNode = new treeNode;
-        treeNode* rightNode = new treeNode;
-        leftNode->tn_smallAndEqual = NULL;
-        rightNode->tn_smallAndEqual = NULL;
-        leftNode->tn_large = NULL;
-        rightNode->tn_large = NULL;
-        leftNode->tn_sampleNum = 0;
-        rightNode->tn_sampleNum = 0;
-        leftNode->tn_samples = new int[sampleNum];
-        rightNode->tn_samples = new int[sampleNum];
-        for (int j = 0;j < sampleNum;j++)
-        {
-            if (feature_temp[j] <= tempSplitPoint)
-            {
-                leftNode->tn_samples[leftNode->tn_sampleNum] = node->tn_samples[j];
-                leftNode->tn_sampleNum++;
-            }
-            else {
-                rightNode->tn_samples[rightNode->tn_sampleNum] = node->tn_samples[j];
-                rightNode->tn_sampleNum++;
-            }
-        }
-        int* tempLeftSample = new int[leftNode->tn_sampleNum];
-        memcpy(tempLeftSample,leftNode->tn_samples,leftNode->tn_sampleNum * sizeof(int));
-        delete[] leftNode->tn_samples;
-        leftNode->tn_samples = tempLeftSample;
-        int* tempRightSample = new int[rightNode->tn_sampleNum];
-        memcpy(tempRightSample,rightNode->tn_samples,rightNode->tn_sampleNum * sizeof(int));
-        delete[] rightNode->tn_samples;
-        rightNode->tn_samples = tempRightSample;
-        float GL = getGj(leftNode,round);
-        float GR = getGj(rightNode,round);
-        float HL = getHj(leftNode,round);
-        float HR = getHj(rightNode,round);
-        float tempGain = (GL * GL) / (HL + gbdt_lambda) + (GR * GR) / (HR + gbdt_lambda) - ((GL + GR) * (GL + GR)) / (HL + HR + gbdt_lambda) - gbdt_gamma;
+        float gi = getGi(node->tn_samples[i],round);
+        GL += gi;
+        GR -= gi;
+        float hi = getHi(node->tn_samples[i],round);
+        HL += hi;
+        HR -= hi;
+        if (i + 1 < sampleNum && feature_value[node->tn_samples[i]] == feature_value[node->tn_samples[i + 1]])
+            continue;
+        float tempGain = (GL * GL) / (HL + gbdt_lambda) + (GR * GR) / (HR + gbdt_lambda) - (G_sum * G_sum) / (H_sum + gbdt_lambda) - gbdt_gamma;
         if (tempGain > *maxGain)
         {
-            *bestSplitPoint = tempSplitPoint;
             *maxGain = tempGain;
+            *bestSplitPoint = feature_value[node->tn_samples[i]];
         }
-        delete[] leftNode->tn_samples;
-        delete[] rightNode->tn_samples;
-        delete leftNode;
-        delete rightNode;
-    }
+    }   
     cout << "split node by one feature completed" << endl;
     delete[] feature_value;
-    delete[] feature_temp;
 }
 
 void GBDT::initalOneTree(treeNode* node)
@@ -171,6 +151,14 @@ void GBDT::initalOneTree(treeNode* node)
         node->tn_samples[i] = i;
     }
 }
+float GBDT::getGi(int index, int round)
+{
+    return 2 * (gbdt_train[round][index] - (float)gbdt_label[index]);
+}
+float GBDT::getHi(int index, int round)
+{
+    return 2.0;
+}
 
 // the input node should have not null tn_samples
 // and not 0 tn_sampleNum
@@ -180,7 +168,7 @@ float GBDT::getGj(treeNode* node, int round)
     for (int i = 0;i < node->tn_sampleNum;i++)
     {
         float yi_pre = gbdt_train[round][node->tn_samples[i]];
-        int yi = Data::getInstance()->getLabelBySampleIndex(node->tn_samples[i]);
+        int yi = gbdt_label[node->tn_samples[i]];
         float gi = 2 * (yi_pre - (float)yi);
         Gj += gi;
     }
@@ -200,13 +188,13 @@ float GBDT::getHj(treeNode* node, int round)
 
 bool GBDT::SplitOneNodeByAllFeature (treeNode* node, int round)
 {
-    float bestSplitPoint = 0.0;
+    cout << "start split one node by all feature" << endl;
+    float bestSplitPoint = -1e10;
     float maxGain = 0.0;
     int bestSplitFeature = -1;
     for (int i = 0;i < gbdt_feature_num;i++)
     {
-        float tempGain = 0.0;
-        float tempSplitPoint = 0.0;
+        float tempGain, tempSplitPoint;
         SplitOneNodeByFeature(node,i,round,&tempGain,&tempSplitPoint);
         if (tempGain > maxGain)
         {

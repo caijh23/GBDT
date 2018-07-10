@@ -16,6 +16,8 @@ class Data
 public:
     static Data* getInstance();
     bool loadTrainData();
+    void getLabelColumn(int* output);
+    void getFeatureColumn(int feature, float* output);
     float* getPredictFeatureByIndex(int index);
     int getLabelBySampleIndex(int index);
     void getFeatureByFeatureIndex(float* output, int* input, int sampleNum, int featureIndex);
