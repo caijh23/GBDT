@@ -10,10 +10,10 @@ TARGET=main
 BIN_TARGET=${BIN_DIR}/${TARGET}
 
 CC=g++
-CFLAGS= -g -Wall -I${INC_DIR} -std=c++11
+CFLAGS= -g -pg -Wall -I${INC_DIR} -std=c++11
 
 ${BIN_TARGET}:${OBJ}
-	${CC} ${OBJ} -o $@
+	${CC} -pg ${OBJ} -o $@
 ${OBJ_DIR}/%.o:${SRC_DIR}/%.cpp
 	${CC} ${CFLAGS} -c $< -o $@
 clean:

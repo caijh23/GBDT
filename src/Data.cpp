@@ -13,7 +13,6 @@ int Data::predictNum = 429923;
 
 Data::Data()
 {
-    trainSample = NULL;
     predictSample = NULL;
     label = NULL;
     trainMat = NULL;
@@ -21,14 +20,6 @@ Data::Data()
 
 Data::~Data()
 {
-    if (trainSample)
-    {
-        for (int i = 0;i < trainNum;i++)
-        {
-            delete[] (trainSample[i].feature_value);
-        }
-        delete[] trainSample;
-    }
     if (predictSample)
     {
         for (int i = 0;i < predictNum;i++)
@@ -83,7 +74,15 @@ bool Data::loadPredictData()
         string line;
         getline(inFile,line);
         stringstream ss;
+        int sampleIndex;
         ss << line;
+        ss >> sampleIndex;
+        cout << index << " : " << sampleIndex << endl;
+        if (sampleIndex != index)
+        {
+            // cout << "error index "  << index  << " " << sampleIndex << endl;
+            break;
+        }
         int currentIndex = 0;
         while (!ss.eof())
         {
@@ -169,7 +168,7 @@ bool Data::loadTrainDataByColumn()
     return true;
 }
 
-bool Data::loadTrainData()
+/*bool Data::loadTrainData()
 {
     trainSample = new sampleItem[trainNum];
 
@@ -220,23 +219,7 @@ bool Data::loadTrainData()
     }
     inFile.close();
     return true;
-}
-
-int Data::getLabelBySampleIndex(int index)
-{
-    return trainSample[index].label;
-}
-
-// output is feature value array crosspond to input
-// input is sample index array
-void Data::getFeatureByFeatureIndex(float* output, int* input, int sampleNum, int featureIndex)
-{
-    for (int i = 0;i < sampleNum;i++)
-    {
-        int index = input[i];
-        output[i] = trainSample[index].feature_value[featureIndex];
-    }
-}
+}*/
 
 int Data::getFeatureNum()
 {
@@ -262,10 +245,10 @@ bool Data::savePrediction(float* prediction, string path)
         cout << "open out file failed" << endl;
         return false;
     }
-    outFile << "id, label\n";
+    outFile << "id,label\n";
     for (int i = 0;i < predictNum;i++)
     {
-        outFile << i << ", " << prediction[i] << "\n";
+        outFile << i << "," << prediction[i] << "\n";
     }
     outFile.close();
     return true;
@@ -281,10 +264,7 @@ float* Data::getFeatureColumn(int feature)
     return trainMat[feature];
 }
 
-void Data::getLabelColumn(int* output)
+int* Data::getLabelColumn()
 {
-    for (int i = 0;i < trainNum;i++)
-    {
-        output[i] = trainSample[i].label;
-    }
+    return label;
 }

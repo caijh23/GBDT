@@ -3,6 +3,7 @@
 #include <iostream>
 #include <algorithm>
 #include <cstring>
+#include <ctime>
 
 using namespace std;
 
@@ -21,7 +22,7 @@ GBDT::~GBDT()
     {
         for (int j = 0;j < gbdt_maxBoostingNum;j++)
         {
-            pruneTree(&gbdt_trees[i][j]);
+            pruneTree(gbdt_trees[i][j]);
         }
         delete[] gbdt_trees[i];
         delete[] gbdt_train[i];
@@ -30,24 +31,24 @@ GBDT::~GBDT()
     delete[] gbdt_trees;
     delete[] gbdt_train;
     delete[] gbdt_prediction;
-    delete[] gbdt_label;
     cout << "GBDT destory" << endl;
 }
 
 void GBDT::initModel()
 {
-    gbdt_trees = new treeNode*[gbdt_round];
+    gbdt_trees = new treeNode**[gbdt_round];
     for (int i = 0;i < gbdt_round;i++)
     {
-        gbdt_trees[i] = new treeNode[gbdt_maxBoostingNum];
+        gbdt_trees[i] = new treeNode*[gbdt_maxBoostingNum];
         for (int j = 0;j < gbdt_maxBoostingNum;j++)
         {
-            gbdt_trees[i][j].tn_feature = -1;
-            gbdt_trees[i][j].tn_large = NULL;
-            gbdt_trees[i][j].tn_smallAndEqual = NULL;
-            gbdt_trees[i][j].tn_weight = 0.0;
-            gbdt_trees[i][j].tn_samples = NULL;
-            gbdt_trees[i][j].tn_sampleNum = 0;
+            gbdt_trees[i][j] = new treeNode;
+            gbdt_trees[i][j]->tn_feature = -1;
+            gbdt_trees[i][j]->tn_large = NULL;
+            gbdt_trees[i][j]->tn_smallAndEqual = NULL;
+            gbdt_trees[i][j]->tn_weight = 0.0;
+            gbdt_trees[i][j]->tn_samples = NULL;
+            gbdt_trees[i][j]->tn_sampleNum = 0;
         }
     }
     gbdt_train = new float*[gbdt_round];
@@ -70,8 +71,7 @@ void GBDT::initModel()
     }
     if (gbdt_label == NULL)
     {
-        gbdt_label = new int[gbdt_train_num];
-        Data::getInstance()->getLabelColumn(gbdt_label);
+        gbdt_label = Data::getInstance()->getLabelColumn();
     }
 }
 
@@ -107,6 +107,8 @@ void GBDT::pruneTree (treeNode* node)
 void GBDT::SplitOneNodeByFeature (treeNode* node, int feature, int round, float* maxGain, float* bestSplitPoint)
 {
     cout << "split node by one feature started" << endl;
+    clock_t startTime,endTime;
+    startTime = clock();
     int sampleNum = node->tn_sampleNum;
     float* feature_value = Data::getInstance()->getFeatureColumn(feature);
     sort(node->tn_samples,node->tn_samples + sampleNum,[=](int i1, int i2){
@@ -136,7 +138,9 @@ void GBDT::SplitOneNodeByFeature (treeNode* node, int feature, int round, float*
             *maxGain = tempGain;
             *bestSplitPoint = feature_value[node->tn_samples[i]];
         }
-    }   
+    }
+    endTime = clock();
+    cout << "Totle Time : " <<(double)(endTime - startTime) / CLOCKS_PER_SEC << "s" << endl;
     cout << "split node by one feature completed" << endl;
 }
 
@@ -187,6 +191,8 @@ float GBDT::getHj(treeNode* node, int round)
 bool GBDT::SplitOneNodeByAllFeature (treeNode* node, int round)
 {
     cout << "start split one node by all feature" << endl;
+    clock_t startTime,endTime;
+    startTime = clock();
     float bestSplitPoint = -1e10;
     float maxGain = 0.0;
     int bestSplitFeature = -1;
@@ -235,16 +241,10 @@ bool GBDT::SplitOneNodeByAllFeature (treeNode* node, int round)
             rightNode->tn_sampleNum++;
         }
     }
-    int* tempLeftSample = new int[leftNode->tn_sampleNum];
-    memcpy(tempLeftSample,leftNode->tn_samples,leftNode->tn_sampleNum * sizeof(int));
-    delete[] leftNode->tn_samples;
-    leftNode->tn_samples = tempLeftSample;
-    int* tempRightSample = new int[rightNode->tn_sampleNum];
-    memcpy(tempRightSample,rightNode->tn_samples,rightNode->tn_sampleNum * sizeof(int));
-    delete[] rightNode->tn_samples;
-    rightNode->tn_samples = tempRightSample;
     node->tn_smallAndEqual = leftNode;
     node->tn_large = rightNode;
+    endTime = clock();
+    cout << "Totle Time : " <<(double)(endTime - startTime) / CLOCKS_PER_SEC << "s" << endl;
     cout << "Spilt one node" << endl;
     return true;
 }
@@ -256,7 +256,7 @@ bool GBDT::SplitOneNodeByAllFeature (treeNode* node, int round)
 // split gain is smaller than gbdt_min_split_gain
 void GBDT::trainSingleTree(treeNode* node, int round, int depth)
 {
-    if (SplitOneNodeByAllFeature(node,round) && depth < gbdt_maxDepth)
+    if (depth < gbdt_maxDepth && SplitOneNodeByAllFeature(node,round))
     {
         trainSingleTree(node->tn_smallAndEqual,round,depth + 1);
         trainSingleTree(node->tn_large,round,depth + 1);
@@ -288,8 +288,10 @@ void GBDT::train()
     {
         for (int j = 0;j < gbdt_maxBoostingNum;j++)
         {
-            initalOneTree(&gbdt_trees[i][j]);
-            trainSingleTree(&gbdt_trees[i][j],i,0);
+            cout << "start train tree " << j + 1 << endl;
+            initalOneTree(gbdt_trees[i][j]);
+            trainSingleTree(gbdt_trees[i][j],i,1);
+            cout << "end train tree " << j + 1 << endl;
         }
     }
 }
@@ -302,7 +304,7 @@ float* GBDT::predict()
         {
             for (int k = 0;k < gbdt_maxBoostingNum;k++)
             {
-                gbdt_prediction[i][j] += predictFromOneTree(&gbdt_trees[i][k],Data::getInstance()->getPredictFeatureByIndex(j));
+                gbdt_prediction[i][j] += predictFromOneTree(gbdt_trees[i][k],Data::getInstance()->getPredictFeatureByIndex(j));
             }
         }
     }

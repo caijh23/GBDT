@@ -10,10 +10,10 @@ int main()
     clock_t startTime,endTime;
     startTime = clock();
     cout << "load train data ..." << endl;
-    Data::getInstance()->loadTrainData();
+    Data::getInstance()->loadTrainDataByColumn();
     cout << "load train data completed" << endl;
     GBDT gbdt;
-    gbdt.setParameters(10,10,0.01,0.01,0.08,0.05);
+    gbdt.setParameters(1,3,0.01,0.01,0.08,0.05);
     gbdt.initModel();
     gbdt.train();
     cout << "load predict data ..." << endl;

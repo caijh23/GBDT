@@ -15,12 +15,9 @@ class Data
 {
 public:
     static Data* getInstance();
-    bool loadTrainData();
-    void getLabelColumn(int* output);
+    int* getLabelColumn();
     float* getFeatureColumn(int feature);
     float* getPredictFeatureByIndex(int index);
-    int getLabelBySampleIndex(int index);
-    void getFeatureByFeatureIndex(float* output, int* input, int sampleNum, int featureIndex);
     int getFeatureNum();
     int getTrainNum();
     int getPredictNum();
@@ -30,7 +27,6 @@ public:
 private:
     Data();
     ~Data();
-    sampleItem* trainSample;
     sampleItem* predictSample;
     float** trainMat; //[featureNum][trainNum]
     int* label;

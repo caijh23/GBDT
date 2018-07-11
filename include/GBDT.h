@@ -34,7 +34,7 @@ private:
     void trainSingleTree(treeNode* node, int round, int depth);
     
 
-    treeNode** gbdt_trees; //[round][boostingStep]
+    treeNode*** gbdt_trees; //[round][boostingStep]
     float** gbdt_prediction; //[round][predictSampleNum]
     float** gbdt_train; //[round][trainSampleNum]
     int* gbdt_label;
