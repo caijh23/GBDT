@@ -49,6 +49,7 @@ private:
     float gbdt_lambda;
     float gbdt_learningRate;
     float gbdt_min_split_gain;
+    int gbdt_num_thread;
 };
 
 #endif
