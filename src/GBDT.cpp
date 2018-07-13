@@ -336,7 +336,7 @@ float* GBDT::predict()
         {
             for (int k = 0;k < gbdt_maxBoostingNum;k++)
             {
-                gbdt_prediction[i][j] += predictFromOneTree(gbdt_trees[i][k],Data::getInstance()->getPredictFeatureByIndex(j));
+                gbdt_prediction[i][j] += gbdt_learningRate * predictFromOneTree(gbdt_trees[i][k],Data::getInstance()->getPredictFeatureByIndex(j));
             }
         }
     }
