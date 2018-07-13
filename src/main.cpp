@@ -7,13 +7,13 @@ using namespace std;
 
 int main()
 {
-    clock_t startTime,endTime;
-    startTime = clock();
+    struct timespec start, finish;
+    clock_gettime(CLOCK_REALTIME, &start);
     cout << "load train data ..." << endl;
     Data::getInstance()->loadTrainDataByColumn();
     cout << "load train data completed" << endl;
     GBDT gbdt;
-    gbdt.setParameters(1,3,0.01,0.01,0.08,0.05);
+    gbdt.setParameters(10,10,0.01,0.01,0.08,0.05);
     gbdt.initModel();
     gbdt.train();
     cout << "load predict data ..." << endl;
@@ -21,7 +21,7 @@ int main()
     cout << "load predict data completed" << endl;
     float* prediction = gbdt.predict();
     Data::getInstance()->savePrediction(prediction,"../data/predictionV1.txt");
-    endTime = clock();
-    cout << "Totle Time : " <<(double)(endTime - startTime) / CLOCKS_PER_SEC << "s" << endl;
+    clock_gettime(CLOCK_REALTIME, &finish);
+    cout << "Totle Time : " << (finish.tv_sec + 1.e-9 * finish.tv_nsec) - (start.tv_sec + 1.e-9 * start.tv_nsec) << "s" << endl;
     return 0;
 }

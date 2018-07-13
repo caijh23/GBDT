@@ -106,12 +106,13 @@ void GBDT::pruneTree (treeNode* node)
 // and not 0 tn_sampleNum
 void GBDT::SplitOneNodeByFeature (treeNode* node, int feature, int round, float* maxGain, float* bestSplitPoint)
 {
-    cout << "split node by one feature started" << endl;
-    clock_t startTime,endTime;
-    startTime = clock();
+    struct timespec start, finish;
+    clock_gettime(CLOCK_REALTIME, &start);
     int sampleNum = node->tn_sampleNum;
     float* feature_value = Data::getInstance()->getFeatureColumn(feature);
-    sort(node->tn_samples,node->tn_samples + sampleNum,[=](int i1, int i2){
+    int* index = new int[sampleNum];
+    memcpy(index,node->tn_samples,sampleNum * sizeof(int));
+    sort(index,index + sampleNum,[=](int i1, int i2){
         return feature_value[i1] < feature_value[i2];
     });
     *maxGain = -1e10;
@@ -124,23 +125,24 @@ void GBDT::SplitOneNodeByFeature (treeNode* node, int feature, int round, float*
     float HR = H_sum;
     for (int i = 0;i < sampleNum;i++)
     {
-        float gi = getGi(node->tn_samples[i],round);
+        float gi = getGi(index[i],round);
         GL += gi;
         GR -= gi;
-        float hi = getHi(node->tn_samples[i],round);
+        float hi = getHi(index[i],round);
         HL += hi;
         HR -= hi;
-        if (i + 1 < sampleNum && feature_value[node->tn_samples[i]] == feature_value[node->tn_samples[i + 1]])
+        if (i + 1 < sampleNum && feature_value[index[i]] == feature_value[index[i + 1]])
             continue;
         float tempGain = (GL * GL) / (HL + gbdt_lambda) + (GR * GR) / (HR + gbdt_lambda) - (G_sum * G_sum) / (H_sum + gbdt_lambda) - gbdt_gamma;
         if (tempGain > *maxGain)
         {
             *maxGain = tempGain;
-            *bestSplitPoint = feature_value[node->tn_samples[i]];
+            *bestSplitPoint = feature_value[index[i]];
         }
     }
-    endTime = clock();
-    cout << "Totle Time : " <<(double)(endTime - startTime) / CLOCKS_PER_SEC << "s" << endl;
+    delete[] index;
+    clock_gettime(CLOCK_REALTIME, &finish);
+    cout << "Totle Time : " << (finish.tv_sec + 1.e-9 * finish.tv_nsec) - (start.tv_sec + 1.e-9 * start.tv_nsec) << "s" << endl;
     cout << "split node by one feature completed" << endl;
 }
 
@@ -191,8 +193,8 @@ float GBDT::getHj(treeNode* node, int round)
 bool GBDT::SplitOneNodeByAllFeature (treeNode* node, int round)
 {
     cout << "start split one node by all feature" << endl;
-    clock_t startTime,endTime;
-    startTime = clock();
+    struct timespec start, finish;
+    clock_gettime(CLOCK_REALTIME, &start);
     float bestSplitPoint = -1e10;
     float maxGain = 0.0;
     int bestSplitFeature = -1;
@@ -211,6 +213,8 @@ bool GBDT::SplitOneNodeByAllFeature (treeNode* node, int round)
     {
         return false;
     }
+    cout << "best SplitFeature is " << bestSplitFeature << endl;
+    cout << "best SplitPoint is " << bestSplitPoint << endl;
     int sampleNum = node->tn_sampleNum;
     float* feature_value = Data::getInstance()->getFeatureColumn(bestSplitFeature);
     node->tn_feature = bestSplitFeature;
@@ -243,8 +247,8 @@ bool GBDT::SplitOneNodeByAllFeature (treeNode* node, int round)
     }
     node->tn_smallAndEqual = leftNode;
     node->tn_large = rightNode;
-    endTime = clock();
-    cout << "Totle Time : " <<(double)(endTime - startTime) / CLOCKS_PER_SEC << "s" << endl;
+    clock_gettime(CLOCK_REALTIME, &finish);
+    cout << "Totle Time : " << (finish.tv_sec + 1.e-9 * finish.tv_nsec) - (start.tv_sec + 1.e-9 * start.tv_nsec) << "s" << endl;
     cout << "Spilt one node" << endl;
     return true;
 }
@@ -304,7 +308,7 @@ float* GBDT::predict()
         {
             for (int k = 0;k < gbdt_maxBoostingNum;k++)
             {
-                gbdt_prediction[i][j] += predictFromOneTree(gbdt_trees[i][k],Data::getInstance()->getPredictFeatureByIndex(j));
+                gbdt_prediction[i][j] += gbdt_learningRate * predictFromOneTree(gbdt_trees[i][k],Data::getInstance()->getPredictFeatureByIndex(j));
             }
         }
     }

@@ -68,7 +68,7 @@ bool Data::loadPredictData()
         return false;
     }
     int index = 0;
-    while (!inFile.eof())
+    while (!inFile.eof() && index < predictNum)
     {
         predictSample[index].feature_value = new float[featureNum];
         string line;
@@ -77,10 +77,9 @@ bool Data::loadPredictData()
         int sampleIndex;
         ss << line;
         ss >> sampleIndex;
-        cout << index << " : " << sampleIndex << endl;
         if (sampleIndex != index)
         {
-            // cout << "error index "  << index  << " " << sampleIndex << endl;
+            cout << "error index "  << index  << " " << sampleIndex << endl;
             break;
         }
         int currentIndex = 0;
@@ -112,7 +111,9 @@ bool Data::loadPredictData()
         }
         index++;
     }
+    cout << "close file" << endl;
     inFile.close();
+    cout << "load completed" << endl;
     return true;
 }
 
